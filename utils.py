@@ -15,7 +15,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributed as dist
 from torch.utils.data.sampler import Sampler
-from torch._six import inf
+from torch import inf
 import random
 
 from tensorboardX import SummaryWriter
@@ -26,7 +26,8 @@ TORCH_MINOR = int(torch.__version__.split(".")[1])
 if TORCH_MAJOR >= 1 and TORCH_MINOR >= 8:
     _int_classes = int
 else:
-    from torch._six import int_classes as _int_classes
+    # from torch._six import int_classes as _int_classes
+    int_classes = int
 
 
 class SmoothedValue(object):
@@ -269,28 +270,31 @@ def init_distributed_mode(args):
         os.environ['LOCAL_RANK'] = str(args.gpu)
         os.environ['RANK'] = str(args.rank)
         os.environ['WORLD_SIZE'] = str(args.world_size)
-    elif 'SLURM_PROCID' in os.environ:
-        args.rank = int(os.environ['SLURM_PROCID'])
-        args.gpu = int(os.environ['SLURM_LOCALID'])
-        args.world_size = int(os.environ['SLURM_NTASKS'])
-        os.environ['RANK'] = str(args.rank)
-        os.environ['LOCAL_RANK'] = str(args.gpu)
-        os.environ['WORLD_SIZE'] = str(args.world_size)
+    # elif 'SLURM_PROCID' in os.environ:
+    #     args.rank = int(os.environ['SLURM_PROCID'])
+    #     args.gpu = int(os.environ['SLURM_LOCALID'])
+    #     args.world_size = int(os.environ['SLURM_NTASKS'])
+    #     os.environ['RANK'] = str(args.rank)
+    #     os.environ['LOCAL_RANK'] = str(args.gpu)
+    #     os.environ['WORLD_SIZE'] = str(args.world_size)
 
-        node_list = os.environ['SLURM_NODELIST']
-        addr = subprocess.getoutput(
-            f'scontrol show hostname {node_list} | head -n1')
-        if 'MASTER_ADDR' not in os.environ:
-            os.environ['MASTER_ADDR'] = addr
+    #     node_list = os.environ['SLURM_NODELIST']
+    #     addr = subprocess.getoutput(
+    #         f'scontrol show hostname {node_list} | head -n1')
+    #     if 'MASTER_ADDR' not in os.environ:
+    #         os.environ['MASTER_ADDR'] = addr
     elif 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         args.rank = int(os.environ["RANK"])
         args.world_size = int(os.environ['WORLD_SIZE'])
+        # print("world size: ", args.world_size)
+        # print("="*20)
         args.gpu = int(os.environ['LOCAL_RANK'])
     else:
         print('Not using distributed mode')
         args.distributed = False
         return
 
+    # print("world size: ", int(os.environ["WORLD_SIZE"]))
     args.distributed = True
 
     torch.cuda.set_device(args.gpu)
@@ -416,11 +420,11 @@ def cosine_scheduler(base_value, final_value, epochs, niter_per_ep, warmup_epoch
     return schedule
 
 
-def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler, model_ema=None):
+def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler, model_ema=None, fold=1):
     output_dir = Path(args.output_dir)
     epoch_name = str(epoch)
     if loss_scaler is not None:
-        checkpoint_paths = [output_dir / ('checkpoint-%s.pth' % epoch_name)]
+        checkpoint_paths = [output_dir / f'fold-{fold}-checkpoint-{epoch_name}.pth']
         for checkpoint_path in checkpoint_paths:
             to_save = {
                 'model': model_without_ddp.state_dict(),
@@ -438,7 +442,7 @@ def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler, mo
         client_state = {'epoch': epoch}
         if model_ema is not None:
             client_state['model_ema'] = get_state_dict(model_ema)
-        model.save_checkpoint(save_dir=args.output_dir, tag="checkpoint-%s" % epoch_name, client_state=client_state)
+        model.save_checkpoint(save_dir=args.output_dir, tag=f"fold-{fold}-checkpoint-{epoch_name}", client_state=client_state)
 
 
 def remove_key_in_checkpoint(checkpoint, remove_key_list=None):

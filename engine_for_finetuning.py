@@ -10,6 +10,7 @@ from scipy.special import softmax
 from einops import rearrange
 from torch.utils.data._utils.collate import default_collate
 import torch.nn.functional as F
+from sklearn.metrics import precision_score, recall_score
 
 
 def train_class_batch(model, samples, target, criterion):
@@ -56,6 +57,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     param_group["weight_decay"] = wd_schedule_values[it]
 
         samples = samples.to(device, non_blocking=True)
+        # print(targets)
+        targets = torch.Tensor(targets)
         targets = targets.to(device, non_blocking=True)
 
         if mixup_fn is not None:
@@ -188,7 +191,7 @@ def final_test(data_loader, model, device, file):
     model.eval()
     final_result = []
     
-    for batch in metric_logger.log_every(data_loader, 10, header):
+    for batch in metric_logger.log_every(data_loader, 100, header):
         videos = batch[0]
         target = batch[1]
         ids = batch[2]
@@ -212,10 +215,23 @@ def final_test(data_loader, model, device, file):
 
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
 
+        _, predicted_classes = torch.max(output, 1)
+
+        # Convert PyTorch tensors to NumPy arrays
+        predicted_classes = predicted_classes.cpu().numpy()
+        target = target.cpu().numpy()
+        
+        # Calculate macro-average precision and recall
+        # precision_macro = precision_score(target, predicted_classes, average='macro')
+        # recall_macro = recall_score(target, predicted_classes, average='macro')
+
         batch_size = videos.shape[0]
         metric_logger.update(loss=loss.item())
         metric_logger.meters['acc1'].update(acc1.item(), n=batch_size)
         metric_logger.meters['acc5'].update(acc5.item(), n=batch_size)
+        # metric_logger.meters['precision_macro'].update(precision_macro, n=batch_size)
+        # metric_logger.meters['recall_macro'].update(recall_macro, n=batch_size)
+        
 
     if not os.path.exists(file):
         os.mknod(file)
@@ -227,6 +243,8 @@ def final_test(data_loader, model, device, file):
     metric_logger.synchronize_between_processes()
     print('* Acc@1 {top1.global_avg:.3f} Acc@5 {top5.global_avg:.3f} loss {losses.global_avg:.3f}'
           .format(top1=metric_logger.acc1, top5=metric_logger.acc5, losses=metric_logger.loss))
+    # print('* precision_macro {precision_macro.global_avg:.3f} recall_macro {recall_macro.global_avg:.3f}'
+    #       .format(precision_macro=metric_logger.precision_macro, recall_macro=metric_logger.recall_macro))
 
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 

@@ -67,6 +67,41 @@ def build_distillation_dataset(args, num_frames=None):
     print("Data Aug = %s" % str(transform))
     return dataset
 
+def build_fold_dataset(is_train, test_mode, args, num_fold=5):
+
+    for fold in range(1, num_fold+1):
+        mode = None
+        anno_path = None
+        if is_train is True:
+            mode = 'train'
+            anno_path = os.path.join(args.data_path, f'train_fold_{fold}.csv')
+        elif test_mode is True:
+            mode = 'test'
+            anno_path = os.path.join(args.data_path, f'val_fold_{fold}.csv') 
+        else:  
+            mode = 'validation'
+            anno_path = os.path.join(args.data_path, f'test_fold_{fold}.csv')
+    
+        dataset = SSVideoClsDataset(
+            anno_path=anno_path,
+            data_path=args.data_root,
+            mode=mode,
+            clip_len=1,
+            num_segment=args.num_frames,
+            test_num_segment=args.test_num_segment,
+            test_num_crop=args.test_num_crop,
+            num_crop=1 if not test_mode else 3,
+            keep_aspect_ratio=True,
+            crop_size=args.input_size,
+            short_side_size=args.short_side_size,
+            new_height=256,
+            new_width=320,
+            args=args,
+        )
+        nb_classes = 11
+    
+        yield dataset, nb_classes
+
 
 def build_dataset(is_train, test_mode, args):
     if args.data_set == 'Kinetics-400':
@@ -130,7 +165,7 @@ def build_dataset(is_train, test_mode, args):
             new_width=320,
             args=args,
         )
-        nb_classes = 174
+        nb_classes = 11
 
     elif args.data_set == 'UCF101':
         mode = None
