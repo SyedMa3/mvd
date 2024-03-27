@@ -240,28 +240,6 @@ def main(args, ds_init):
 
     cudnn.benchmark = True
 
-    model = create_model(
-        args.model,
-        pretrained=False,
-        img_size=args.input_size,
-        num_classes=args.nb_classes,
-        all_frames=args.num_frames * args.num_segments,
-        tubelet_size=args.tubelet_size,
-        drop_rate=args.drop,
-        drop_path_rate=args.drop_path,
-        attn_drop_rate=args.attn_drop_rate,
-        drop_block_rate=None,
-        use_mean_pooling=args.use_mean_pooling,
-        init_scale=args.init_scale,
-        use_cls_token=args.use_cls_token,
-        fc_drop_rate=args.fc_drop_rate,
-        use_checkpoint=args.use_checkpoint,
-    )
-
-    patch_size = model.patch_embed.patch_size
-    print("Patch size = %s" % str(patch_size))
-    args.window_size = (args.num_frames // 2, args.input_size // patch_size[0], args.input_size // patch_size[1])
-    args.patch_size = patch_size
 
     kfold = KFold(n_splits=args.num_folds, shuffle=True, random_state=42)
     # dataset_train, args.nb_classes = build_dataset(is_train=True, test_mode=False, args=args)
@@ -275,6 +253,29 @@ def main(args, ds_init):
 
     for fold, (dataset_train, args.nb_classes) in enumerate(train_iter):
         print(f"Fold {fold + 1}/{args.num_folds}")
+        
+        model = create_model(
+            args.model,
+            pretrained=False,
+            img_size=args.input_size,
+            num_classes=args.nb_classes,
+            all_frames=args.num_frames * args.num_segments,
+            tubelet_size=args.tubelet_size,
+            drop_rate=args.drop,
+            drop_path_rate=args.drop_path,
+            attn_drop_rate=args.attn_drop_rate,
+            drop_block_rate=None,
+            use_mean_pooling=args.use_mean_pooling,
+            init_scale=args.init_scale,
+            use_cls_token=args.use_cls_token,
+            fc_drop_rate=args.fc_drop_rate,
+            use_checkpoint=args.use_checkpoint,
+        )
+    
+        patch_size = model.patch_embed.patch_size
+        print("Patch size = %s" % str(patch_size))
+        args.window_size = (args.num_frames // 2, args.input_size // patch_size[0], args.input_size // patch_size[1])
+        args.patch_size = patch_size
 
         dataset_val, _ = next(val_iter)
         dataset_test, _ = next(test_iter)
@@ -451,6 +452,9 @@ def main(args, ds_init):
 
             utils.load_state_dict(model, checkpoint_model, prefix=args.model_prefix)
 
+        with open('model-dict.txt', 'w') as file:
+            file.write(str(model.state_dict()))
+
         model.to(device)
 
         model_ema = None
@@ -540,9 +544,15 @@ def main(args, ds_init):
 
         print("criterion = %s" % str(criterion))
 
+        with open('model-dict-before.txt', 'w') as file:
+                file.write(str(model.state_dict()))
+
         utils.auto_load_model(
             args=args, model=model, model_without_ddp=model_without_ddp,
             optimizer=optimizer, loss_scaler=loss_scaler, model_ema=model_ema)
+
+        with open('model-dict-after.txt', 'w') as file:
+                file.write(str(model.state_dict()))
 
         if args.output_dir and utils.is_main_process():
             config_name = args.eval_log_name + '_config.txt' if args.eval else "config.txt"
@@ -551,6 +561,7 @@ def main(args, ds_init):
                     f.write(format(arg, '<20') + " " + format(str(getattr(args, arg)), '<') + "\n")  # str, arg_type
 
         if args.eval:
+            
             if not args.merge_test:
                 preds_file = os.path.join(args.output_dir, str(global_rank) + '.txt')
                 test_stats = final_test(data_loader_test, model, device, preds_file)

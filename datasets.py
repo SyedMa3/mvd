@@ -77,10 +77,10 @@ def build_fold_dataset(is_train, test_mode, args, num_fold=5):
             anno_path = os.path.join(args.data_path, f'train_fold_{fold}.csv')
         elif test_mode is True:
             mode = 'test'
-            anno_path = os.path.join(args.data_path, f'val_fold_{fold}.csv') 
+            anno_path = os.path.join(args.data_path, f'test_fold_{fold}.csv') 
         else:  
             mode = 'validation'
-            anno_path = os.path.join(args.data_path, f'test_fold_{fold}.csv')
+            anno_path = os.path.join(args.data_path, f'val_fold_{fold}.csv')
     
         dataset = SSVideoClsDataset(
             anno_path=anno_path,

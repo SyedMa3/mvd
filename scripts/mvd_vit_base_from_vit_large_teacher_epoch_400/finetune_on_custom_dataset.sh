@@ -1,6 +1,6 @@
 #!/bin/bash
 GPUS=2
-OUTPUT_DIR='OUTPUT/mvd_vit_base_with_vit_large_teacher_k400_epoch_400/cross-val_finetune_on_all_cases'
+OUTPUT_DIR='OUTPUT/mvd_vit_base_with_vit_large_teacher_k400_epoch_400/fixed-cross-val_finetune_on_all_cases'
 MODEL_PATH='OUTPUT/mvd_vit_base_with_vit_large_teacher_k400_epoch_400/checkpoint-399.pth'
 DATA_PATH='data/Annotations'
 DATA_ROOT='data'

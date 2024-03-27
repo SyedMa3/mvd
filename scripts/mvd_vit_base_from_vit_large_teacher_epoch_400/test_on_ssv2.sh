@@ -1,9 +1,9 @@
 #!/bin/bash
 GPUS=2
 OUTPUT_DIR='OUTPUT/mvd_vit_base_with_vit_large_teacher_k400_epoch_400/test_on_finetuned_Case003'
-MODEL_PATH='OUTPUT/mvd_vit_base_with_vit_large_teacher_k400_epoch_400/finetune_on_Case003/checkpoint-99/mp_rank_00_model_states.pt'
+MODEL_PATH='OUTPUT/mvd_vit_base_with_vit_large_teacher_k400_epoch_400/cross-val_finetune_on_all_cases/fold-1-checkpoint-best/mp_rank_00_model_states.pt'
 DATA_PATH='data/Annotations'
-DATA_ROOT='data/Case003_10sec'
+DATA_ROOT='data'
 
 # train on 16 V100 GPUs (2 nodes x 8 GPUs)
 torchrun --nproc_per_node=2 \
